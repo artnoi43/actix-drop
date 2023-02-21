@@ -10,7 +10,7 @@ pub enum StoreError {
     #[error("no such clipboard")]
     NoSuch,
 
-    #[error("actix-drop bug")]
+    #[error("soydrop bug")]
     Bug(String),
 
     #[error("empty clipboard sent")]

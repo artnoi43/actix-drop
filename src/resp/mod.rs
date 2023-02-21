@@ -1,6 +1,6 @@
 pub mod html;
 
-/// http_resp defines HTTP responses used by actix-drop.
+/// http_resp defines HTTP responses used by soydrop.
 /// Other kind of planned responses are TCP and other protocols.
 pub mod http_resp {
     use actix_web::{HttpResponse, HttpResponseBuilder};
@@ -13,7 +13,7 @@ pub mod http_resp {
 
     type DropResult = Result<Option<Clipboard>, StoreError>;
 
-    /// DropResponseHttp is a trait representing actix-drop HTTP response.
+    /// DropResponseHttp is a trait representing soydrop HTTP response.
     pub trait DropResponseHttp: From<DropResult> {
         // HTTP header Content-Type
         const CONTENT_TYPE: &'static str;
@@ -26,7 +26,7 @@ pub mod http_resp {
         /// send_clipboard returns the response with the clipboard content
         /// self should be Ok(Some(_)), since we are sending the clipboard to clients.
         fn send_clipboard(self, builder: HttpResponseBuilder, hash: &str) -> HttpResponse;
-        /// post_clipboard returns the response when clipboard is posted to actix-drop
+        /// post_clipboard returns the response when clipboard is posted to soydrop
         /// self should be Ok(None), since we are not sending just the acknowledgement.
         fn post_clipboard(self, builder: HttpResponseBuilder, hash: &str) -> HttpResponse;
     }
@@ -133,7 +133,7 @@ pub mod http_resp {
         fn landing_page() -> HttpResponse {
             HttpResponse::Ok()
                 .content_type(Self::CONTENT_TYPE)
-                .body(para!("actix-drop: ok"))
+                .body(para!("soydrop: ok"))
         }
 
         fn format_err(hash: &str, err: StoreError) -> String {
@@ -173,7 +173,7 @@ pub mod http_resp {
         fn landing_page() -> HttpResponse {
             HttpResponse::Ok()
                 .content_type(Self::CONTENT_TYPE)
-                .body("actix-drop: ok")
+                .body("soydrop: ok")
         }
 
         fn format_err(hash: &str, err: StoreError) -> String {

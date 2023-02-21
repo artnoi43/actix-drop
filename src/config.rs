@@ -42,9 +42,9 @@ fn init_config() -> Result<AppConfig, config::ConfigError> {
         .set_default("http_addr", HTTP_ADDR)?
         .set_default("http_port", HTTP_PORT)?
         .set_default("timeout", TIMEOUT.to_string())?
-        .add_source(config::File::with_name("/etc/actix-drop/config").required(false))
-        .add_source(config::File::with_name("$HOME/.config/actix-drop/config").required(false))
-        .add_source(config::File::with_name("$HOME/.actix-drop/config").required(false))
+        .add_source(config::File::with_name("/etc/soydrop/config").required(false))
+        .add_source(config::File::with_name("$HOME/.config/soydrop/config").required(false))
+        .add_source(config::File::with_name("$HOME/.soydrop/config").required(false))
         .add_source(config::Environment::with_prefix("DROP"))
         .build()?
         .try_deserialize::<AppConfig>()

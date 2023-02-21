@@ -8,7 +8,7 @@ use super::clipboard::Clipboard;
 use super::error::StoreError;
 use super::persist;
 
-/// Tracker is used to store in-memory actix-drop clipboard
+/// Tracker is used to store in-memory soydrop clipboard
 pub struct Tracker {
     /// If a clipboard is `Clipboard::Mem`, its hash gets inserted as map key with value `Some(_)`
     /// If a clipboard is `Clipboard::Persist`, its hash gets inserted as map key with value `None`

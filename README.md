@@ -1,18 +1,19 @@
-# actix-drop
+# soydrop
 
-actix-drop is a simple web app for sharing texts across different computers.
+[![Workflow Status](https://github.com/artnoi43/soydrop/workflows/main/badge.svg)](https://github.com/artnoi43/soydrop/actions?query=workflow%3A%22main%22)
+![Maintenance](https://img.shields.io/badge/maintenance-activly--developed-brightgreen.svg)
 
-Most of my computers run on different Linux distros, my servers on OpenBSD,
-and my phone is iOS, which make it super difficult to share clipboards.
+```text
+____ ____ _   _ ___  ____ ____ ___
+[__  |  |  \_/  |  \ |__/ |  | |__]
+___] |__|   |   |__/ |  \ |__| |
+```
 
-I could have used ready-made solution like PasteBin or email the text to myself,
-but that would make me nervous when sending sensitive info like SSH keys.
-
-And I want to try Rust anyway, so here it is.
+soydrop is a simple web app for sharing texts across different computers.
 
 ## Features
 
-actix-drop writes text to file or in-memory clipboard store, with a timer.
+soydrop writes text to file or in-memory clipboard store, with a timer.
 The clipboard is later accessed by referencing the first 4 characters of
 hex-encoded representation of its SHA2 hash.
 
@@ -29,5 +30,24 @@ like NGINX to enable HTTP Basic Authentication.
 
 ### Planned features (not yet implemented)
 
-Expandable hash keys using trie nodes for clipboard hashes, AES or RSA encryption,
-file upload (probably with multiform), and TCP support
+- Expandable hash keys using trie nodes for clipboard hashes (see branch `dev/trie`)
+
+- AES or RSA encryption,
+
+- File upload (probably with multiform)
+
+- TCP support
+
+## Why write soydrop in the first place?
+
+Most of my computers run on different Linux distros, my servers on OpenBSD,
+and my phone is iOS, which make it super difficult to share clipboards.
+
+I could have used ready-made solution like PasteBin or email the text to myself,
+but that would make me nervous when sending sensitive info like SSH keys.
+
+And I want to try Rust anyway, so here it is.
+
+Current version: 0.1.0
+
+License: BSD-3-Clause OR GPL-2.0

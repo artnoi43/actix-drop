@@ -1,4 +1,33 @@
-mod config; // actix-drop config, not extern crate `config`
+//! soydrop is a simple web app for sharing texts across different computers.
+//!
+//! # Features
+//!
+//! soydrop writes text to file or in-memory clipboard store, with a timer.
+//! The clipboard is later accessed by referencing the first 4 characters of
+//! hex-encoded representation of its SHA2 hash.
+//!
+//! For security reason, host it behind a firewall and VPN, or use modern reverse proxy
+//! like NGINX to enable HTTP Basic Authentication.
+//!
+//! - In-memory or file storage
+//!
+//! - Multiple endpoints for different HTTP content type: HTML, JSON, and plain text
+//!
+//! - Expiration timer (can be reset/extended)
+//!
+//! - Configuation via files or environment
+//!
+//! ## Planned features (not yet implemented)
+//!
+//! - Expandable hash keys using trie nodes for clipboard hashes (see branch `dev/trie`)
+//!
+//! - AES or RSA encryption,
+//!
+//! - File upload (probably with multiform)
+//!
+//! - TCP support
+
+mod config; // soydrop config, not extern crate `config`
 mod http_server;
 mod resp;
 mod store;
@@ -19,7 +48,7 @@ async fn main() {
     let conf = AppConfig::init();
     println!(
         "\n{}\n{}\n",
-        "Starting actix-drop: current configuration".yellow(),
+        "Starting soydrop: current configuration".yellow(),
         serde_json::to_string(&conf).unwrap()
     );
 

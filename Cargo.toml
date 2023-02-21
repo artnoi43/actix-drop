@@ -1,8 +1,12 @@
 [package]
-name = "actix-drop"
+name = "soydrop"
 version = "0.1.0"
 edition = "2021"
-
+description = "Simple webapp for sharing text"
+readme = "README.md"
+license = "BSD-3-Clause OR GPL-2.0"
+repository = "https://github.com/artnoi43/soydrop"
+authors = ["Prem Phansuriyanon"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -15,3 +19,7 @@ serde_json = "1"
 sha2 = "0.10"
 config = ">=0.13"
 colored = "2"
+
+[badges]
+github = { repository = "artnoi43/soydrop", workflow = "main" }
+maintenance = { status = "actively-developed" }
