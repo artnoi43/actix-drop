@@ -23,6 +23,7 @@ impl Tracker {
         }
     }
 
+    #[allow(unused)]
     pub fn is_empty(&self) -> bool {
         self.haystack.is_empty()
     }
@@ -40,14 +41,17 @@ impl Tracker {
         dur: Duration,
     ) -> Result<usize, StoreError> {
         // Drop the old timer thread
-        if let Some((_, stopper)) = tracker.remove(&hash) {
+        if let Some((_, Some(stopper))) = tracker.remove(&hash) {
             // Recevier might have been dropped
             if let Err(_) = stopper.send(()) {
                 eprintln!("store_new_clipboard: failed to remove old timer for {hash}");
             }
         }
 
-        let (min_len, rx) = tracker.haystack.insert_clipboard(hash, clipboard)?;
+        let (tx, rx) = oneshot::channel();
+        let min_len = tracker
+            .haystack
+            .insert_clipboard(hash, clipboard, Some(tx))?;
 
         println!("spawing timer for {hash}");
         tokio::task::spawn(expire_timer(
@@ -66,7 +70,7 @@ impl Tracker {
         self.haystack.get_clipboard_frag(hash)
     }
 
-    pub fn remove(&self, hash: &str) -> Option<(Option<Clipboard>, oneshot::Sender<()>)> {
+    pub fn remove(&self, hash: &str) -> Option<(Option<Clipboard>, Option<oneshot::Sender<()>>)> {
         self.haystack
             .remove(hash)
             .and_then(|tuple| Some((tuple.1, tuple.2)))
@@ -128,8 +132,7 @@ mod tests {
         let bad_key = "badkey";
         let dur = Duration::from_millis(300);
 
-        Tracker::store_new_clipboard(t.clone(), key, Clipboard::Mem("foo".into()), dur)
-            .unwrap();
+        Tracker::store_new_clipboard(t.clone(), key, Clipboard::Mem("foo".into()), dur).unwrap();
 
         assert!(t.get_clipboard(key).is_some());
         assert!(t.get_clipboard(bad_key).is_none());
@@ -142,8 +145,7 @@ mod tests {
         let dur = Duration::from_millis(300);
 
         // Store and launch the expire timer
-        Tracker::store_new_clipboard(t.clone(), key, Clipboard::Mem("foo".into()), dur)
-            .unwrap();
+        Tracker::store_new_clipboard(t.clone(), key, Clipboard::Mem("foo".into()), dur).unwrap();
         // Sleep until expired
         tokio::spawn(tokio::time::sleep(dur)).await.unwrap();
 
@@ -195,13 +197,8 @@ mod tests {
 
         let dur = Duration::from_millis(500);
         vals.clone().into_iter().enumerate().for_each(|(_i, val)| {
-            Tracker::store_new_clipboard(
-                tracker.clone(),
-                val.0,
-                Clipboard::Mem(val.0.into()),
-                dur,
-            )
-            .unwrap();
+            Tracker::store_new_clipboard(tracker.clone(), val.0, Clipboard::Mem(val.0.into()), dur)
+                .unwrap();
         });
 
         vals.clone()

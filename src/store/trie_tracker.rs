@@ -10,7 +10,7 @@ use super::persist;
 // Tracker replacement, with trie from soytrie.
 pub(super) struct TrieTracker {
     // trie keeps tuple (full_hash, clipboard, aborter) as value
-    trie: Mutex<Trie<u8, (String, Option<Clipboard>, oneshot::Sender<()>)>>,
+    trie: Mutex<Trie<u8, (String, Option<Clipboard>, Option<oneshot::Sender<()>>)>>,
 }
 
 impl TrieTracker {
@@ -25,7 +25,7 @@ impl TrieTracker {
     pub fn remove(
         &self,
         hash: &str,
-    ) -> Option<(String, Option<Clipboard>, oneshot::Sender<()>)> {
+    ) -> Option<(String, Option<Clipboard>, Option<oneshot::Sender<()>>)> {
         self.trie
             .lock()
             .expect("failed to lock trie")
@@ -33,13 +33,13 @@ impl TrieTracker {
             .and_then(|node| node.value)
     }
 
+    #[allow(unused)]
     pub fn is_empty(&self) -> bool {
         self.trie
             .lock()
             .expect("failed to lock trie")
             .all_valued_children()
-            .len()
-            == 0
+            .is_empty()
     }
 
     // Reports whether there's only 1 child below frag
@@ -108,23 +108,25 @@ impl TrieTracker {
         &self,
         hash: &str,
         clipboard: Clipboard,
+        aborter: Option<oneshot::Sender<()>>,
         // The usize returned is the shortest hash length for which the hash
         // can still be uniquely accessed.
-    ) -> Result<(usize, oneshot::Receiver<()>), StoreError> {
+    ) -> Result<usize, StoreError> {
         let mut trie = self.trie.lock().unwrap();
 
         // Abort previous timer, and delete persisted file if there's one
         trie.remove(hash.as_ref())
-            .and_then(|target_child| target_child.value)
+            .and_then(|child| child.value)
             .map(|value| {
                 // Clipboard::Mem has None stored
                 if value.1.is_none() {
                     persist::rm_clipboard_file(hash)?;
                 }
 
-                Ok::<tokio::sync::oneshot::Sender<()>, StoreError>(value.2)
+                Ok::<Option<tokio::sync::oneshot::Sender<()>>, StoreError>(value.2)
             })
             .transpose()?
+            .and_then(|aborter| aborter)
             .map(|aborter| match aborter.send(()) {
                 Err(_) => Err(StoreError::Bug(format!(
                     "failed to abort prev timer: {hash}",
@@ -175,10 +177,9 @@ impl TrieTracker {
             }
         };
 
-        let (tx, rx) = oneshot::channel();
-        trie.insert_value(hash.as_ref(), (hash.to_string(), to_save, tx));
+        trie.insert_value(hash.as_ref(), (hash.to_string(), to_save, aborter));
 
-        Ok((min_len, rx))
+        Ok(min_len)
     }
 }
 
@@ -202,9 +203,8 @@ mod tests {
             println!("{} {v}", idx + 1, v = val.0);
             assert_eq!(
                 htrie
-                    .insert_clipboard(val.0.as_ref(), Clipboard::Mem(val.0.into()))
-                    .expect("failed to insert {val}")
-                    .0,
+                    .insert_clipboard(val.0.as_ref(), Clipboard::Mem(val.0.into()), None)
+                    .expect("failed to insert {val}"),
                 // Expected return value (min hash len)
                 val.1,
             );
