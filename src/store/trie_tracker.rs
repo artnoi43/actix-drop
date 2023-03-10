@@ -108,14 +108,12 @@ impl TrieTracker {
         &self,
         hash: &str,
         clipboard: Clipboard,
-        aborter: Option<oneshot::Sender<()>>,
-        // The usize returned is the shortest hash length for which the hash
-        // can still be uniquely accessed.
+        aborter: Option<oneshot::Sender<()>>, // If set to Some, `insert_clipboard` will abort the previous timer for |hash|
     ) -> Result<usize, StoreError> {
+        // Lock trie throughout this function call
         let mut trie = self.trie.lock().unwrap();
-
         // Abort previous timer, and delete persisted file if there's one
-        trie.remove(hash.as_ref())
+        trie.remove(hash.as_bytes())
             .and_then(|child| child.value)
             .map(|value| {
                 // Clipboard::Mem has None stored
@@ -123,16 +121,18 @@ impl TrieTracker {
                     persist::rm_clipboard_file(hash)?;
                 }
 
-                Ok::<Option<tokio::sync::oneshot::Sender<()>>, StoreError>(value.2)
-            })
-            .transpose()?
-            .and_then(|aborter| aborter)
-            .map(|aborter| match aborter.send(()) {
-                Err(_) => Err(StoreError::Bug(format!(
-                    "failed to abort prev timer: {hash}",
-                ))),
+                match value.2 {
+                    // No aborter (no expiration)
+                    None => Ok(()),
+                    // Aborting may fail
+                    Some(aborter) => match aborter.send(()) {
+                        Err(_) => Err(StoreError::Bug(format!(
+                            "failed to abort prev timer: {hash}",
+                        ))),
 
-                _ => Ok(()),
+                        _ => Ok(()),
+                    },
+                }
             })
             .transpose()?;
 
