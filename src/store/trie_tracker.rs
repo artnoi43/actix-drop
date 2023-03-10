@@ -121,18 +121,16 @@ impl TrieTracker {
                     persist::rm_clipboard_file(hash)?;
                 }
 
-                match value.2 {
-                    // No aborter (no expiration)
-                    None => Ok(()),
-                    // Aborting may fail
-                    Some(aborter) => match aborter.send(()) {
-                        Err(_) => Err(StoreError::Bug(format!(
+                // Abort prev timer for |hash| if there's Some
+                if let Some(aborter) = value.2 {
+                    if aborter.send(()).is_err() {
+                        return Err(StoreError::Bug(format!(
                             "failed to abort prev timer: {hash}",
-                        ))),
-
-                        _ => Ok(()),
-                    },
+                        )));
+                    }
                 }
+
+                Ok(())
             })
             .transpose()?;
 
