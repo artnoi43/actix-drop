@@ -41,7 +41,10 @@ impl Tracker {
         dur: Duration,
     ) -> Result<usize, StoreError> {
         // Drop the old timer thread
+        let mut dup = false;
         if let Some((_, Some(stopper))) = tracker.remove(&hash) {
+            // There was a previous clipboard with matching hash
+            dup = true;
             // Recevier might have been dropped
             if let Err(_) = stopper.send(()) {
                 eprintln!("store_new_clipboard: failed to remove old timer for {hash}");
@@ -51,7 +54,7 @@ impl Tracker {
         let (tx, rx) = oneshot::channel();
         let min_len = tracker
             .haystack
-            .insert_clipboard(hash, clipboard, Some(tx))?;
+            .insert_clipboard(hash, clipboard, Some(tx), dup)?;
 
         println!("spawing timer for {hash}");
         tokio::task::spawn(expire_timer(

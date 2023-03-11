@@ -100,64 +100,44 @@ impl TrieTracker {
             })
     }
 
-    // Inserts clipboard to the tracker. If the clipboard is duplicate (i.e. the hash collides),
-    // aborts the timer previously set and start a new one. It returns the minimum length of hash (frag)
-    // required to uniquely access this clipboard. `insert_clipboard` expects that the hashes are of
-    // uniform, constant length.
+    // Inserts clipboard to the tracker. It returns the minimum length of hash (frag)
+    // required to uniquely access this clipboard `min_len`.
+    // `insert_clipboard` expects that the hashes are of uniform, constant length.
     pub fn insert_clipboard(
         &self,
         hash: &str,
         clipboard: Clipboard,
         aborter: Option<oneshot::Sender<()>>, // If set to Some, `insert_clipboard` will abort the previous timer for |hash|
+        dup: bool,
     ) -> Result<usize, StoreError> {
         // Lock trie throughout this function call
         let mut trie = self.trie.lock().unwrap();
-        // Abort previous timer, and delete persisted file if there's one
-        trie.remove(hash.as_bytes())
-            .and_then(|child| child.value)
-            .map(|value| {
-                // Clipboard::Mem has None stored
-                if value.1.is_none() {
-                    persist::rm_clipboard_file(hash)?;
-                }
-
-                // Abort prev timer for |hash| if there's Some
-                if let Some(aborter) = value.2 {
-                    if aborter.send(()).is_err() {
-                        return Err(StoreError::Bug(format!(
-                            "failed to abort prev timer: {hash}",
-                        )));
-                    }
-                }
-
-                Ok(())
-            })
-            .transpose()?;
 
         // Find the return value min_len (default is 4, MIN_HASH_LEN).
         // If the first 4 chars of |hash| is not in the trie,
-        // then we call it a day and assign idx to 4.
+        // then we call it a day and assign min_len to 4.
         // If there's a child matching the fist 4 hash chars,
         // then we traverse from 4..hash_len until we reach a point
-        // where a child is child-less and assign idx to.
+        // where a child is child-less and that position is our min_len.
         let mut min_len = Self::MIN_HASH_LEN;
+        if !dup {
+            match trie
+                .as_ref()
+                .get_child(&hash[..Self::MIN_HASH_LEN].as_ref())
+            {
+                None => min_len = Self::MIN_HASH_LEN,
+                Some(mut curr) => {
+                    let h: &[u8] = hash.as_ref();
 
-        match trie
-            .as_ref()
-            .get_child(&hash[..Self::MIN_HASH_LEN].as_ref())
-        {
-            None => min_len = Self::MIN_HASH_LEN,
-            Some(mut curr) => {
-                let h: &[u8] = hash.as_ref();
-
-                for i in (Self::MIN_HASH_LEN..hash.len()).into_iter() {
-                    match curr.get_direct_child(h[i]) {
-                        None => {
-                            min_len = i + 1;
-                            break;
-                        }
-                        Some(next) => {
-                            curr = next;
+                    for i in (Self::MIN_HASH_LEN..h.len()).into_iter() {
+                        match curr.get_direct_child(h[i]) {
+                            None => {
+                                min_len = i + 1;
+                                break;
+                            }
+                            Some(next) => {
+                                curr = next;
+                            }
                         }
                     }
                 }
@@ -199,12 +179,29 @@ mod tests {
         let htrie = TrieTracker::new();
         vals.into_iter().enumerate().for_each(|(idx, val)| {
             println!("{} {v}", idx + 1, v = val.0);
+            let dup = htrie.get_clipboard(val.0).is_some();
             assert_eq!(
                 htrie
-                    .insert_clipboard(val.0.as_ref(), Clipboard::Mem(val.0.into()), None)
+                    .insert_clipboard(val.0.as_ref(), Clipboard::Mem(val.0.into()), None, dup,)
                     .expect("failed to insert {val}"),
                 // Expected return value (min hash len)
                 val.1,
+            );
+        });
+
+        // Same hash should always returns the same min hash len
+        let hash = "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae";
+        (0..5).into_iter().for_each(|_| {
+            assert_eq!(
+                htrie
+                    .insert_clipboard(
+                        hash,
+                        Clipboard::Mem("foo".into()),
+                        None,
+                        !htrie.is_shortest_ref(hash),
+                    )
+                    .expect("error in insert_clipboard"),
+                TrieTracker::MIN_HASH_LEN,
             );
         });
     }

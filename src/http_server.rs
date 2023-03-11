@@ -57,14 +57,12 @@ where
     }
 
     if clipboard.is_empty() {
-        return R::from((HttpResponse::BadRequest(), Err(StoreError::Empty)))
-            .post_clipboard("");
+        return R::from((HttpResponse::BadRequest(), Err(StoreError::Empty))).post_clipboard("");
     }
 
     // hash is hex-coded string of SHA2 hash of clipboard.text.
     // hash will be truncated to string of length 4, and used as clipboard key.
-    let mut hash = format!("{:x}", Sha256::digest(&clipboard));
-    hash.truncate(4);
+    let hash = format!("{:x}", Sha256::digest(&clipboard));
 
     match Tracker::store_new_clipboard(
         tracker.into_inner(),
@@ -72,7 +70,7 @@ where
         clipboard,
         Duration::from(**dur),
     ) {
-        Ok(_) => R::from((HttpResponse::Ok(), Ok(None))).post_clipboard(&hash),
+        Ok(min_len) => R::from((HttpResponse::Ok(), Ok(None))).post_clipboard(&hash[..min_len]),
 
         Err(err) => {
             eprintln!("error storing clipboard {}: {}", hash, err.to_string());
@@ -90,12 +88,8 @@ where
     let tracker = tracker.into_inner();
 
     match tracker.get_clipboard(&hash) {
-        Some(clipboard) => {
-            R::from((HttpResponse::Ok(), Ok(Some(clipboard)))).send_clipboard(&hash)
-        }
-        None => {
-            R::from((HttpResponse::NotFound(), Err(StoreError::NoSuch))).send_clipboard(&hash)
-        }
+        Some(clipboard) => R::from((HttpResponse::Ok(), Ok(Some(clipboard)))).send_clipboard(&hash),
+        None => R::from((HttpResponse::NotFound(), Err(StoreError::NoSuch))).send_clipboard(&hash),
     }
 }
 
